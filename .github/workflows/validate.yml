@@ -1,0 +1,81 @@
+name: 스킬 검증
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v7
+      - name: Python 설정
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: 검증 의존성 설치
+        run: python -m pip install -r requirements-ci.txt
+      - name: Bash와 스킬 검증
+        shell: bash
+        run: |
+          bash -n scripts/link-skills.sh scripts/validate.sh
+          ./scripts/validate.sh
+          python scripts/validate_skills.py
+          mkdir -p skills/invalid/depth/skill
+          touch skills/invalid/depth/skill/SKILL.md
+          if ./scripts/validate.sh >/dev/null 2>&1; then
+            echo "잘못된 SKILL.md 깊이를 허용했습니다." >&2
+            exit 1
+          fi
+          if python scripts/validate_skills.py >/dev/null 2>&1; then
+            echo "Python 검증기가 잘못된 SKILL.md 깊이를 허용했습니다." >&2
+            exit 1
+          fi
+          unlink skills/invalid/depth/skill/SKILL.md
+          rmdir skills/invalid/depth/skill skills/invalid/depth skills/invalid
+      - name: 격리 링크 설치와 멱등성 검증
+        shell: bash
+        env:
+          CODEX_HOME: ${{ runner.temp }}/codex
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude
+        run: |
+          ./scripts/link-skills.sh
+          while IFS= read -r skill_file; do
+            expected="$(dirname "$skill_file")"
+            skill_name="$(basename "$expected")"
+            test "$(readlink "$CODEX_HOME/skills/$skill_name")" = "$expected"
+            test "$(readlink "$CLAUDE_CONFIG_DIR/skills/$skill_name")" = "$expected"
+          done < <(find "$GITHUB_WORKSPACE/skills" -name SKILL.md | sort)
+          ./scripts/link-skills.sh
+
+  windows-powershell-7:
+    runs-on: windows-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v7
+      - name: PowerShell 7 격리 링크 설치와 멱등성 검증
+        shell: pwsh
+        env:
+          CODEX_HOME: ${{ runner.temp }}\codex
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}\claude
+        run: |
+          ./scripts/link-skills.ps1
+          ./scripts/link-skills.ps1
+
+          Get-ChildItem -Path skills -Filter "SKILL.md" -File -Recurse | ForEach-Object {
+              $expected = $_.Directory.FullName
+              $skillName = $_.Directory.Name
+              $codexLink = Get-Item -LiteralPath "$env:CODEX_HOME/skills/$skillName" -Force
+              $claudeLink = Get-Item -LiteralPath "$env:CLAUDE_CONFIG_DIR/skills/$skillName" -Force
+
+              if (-not $codexLink.LinkType -or $codexLink.Target -ne $expected) {
+                  throw "Codex 링크 대상이 중앙 스킬과 다릅니다: $skillName"
+              }
+              if (-not $claudeLink.LinkType -or $claudeLink.Target -ne $expected) {
+                  throw "Claude Code 링크 대상이 중앙 스킬과 다릅니다: $skillName"
+              }
+          }
