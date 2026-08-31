@@ -1,0 +1,310 @@
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use rand::{TryRng, rngs::SysRng};
+use sha2::{Digest, Sha256};
+use std::{cmp::min, net::Ipv4Addr, time::Duration};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+    time::{Instant, timeout_at},
+};
+use url::Url;
+
+const AUTH_ENDPOINT: &str = "https://accounts.google.com/o/oauth2/v2/auth";
+const CALLBACK_PATH: &str = "/oauth/callback";
+const MAX_REQUEST_BYTES: usize = 8 * 1024;
+const CONNECTION_TIMEOUT: Duration = Duration::from_secs(3);
+
+pub struct OAuthAttempt {
+    listener: TcpListener,
+    redirect_uri: String,
+    state: String,
+    nonce: String,
+    code_verifier: String,
+}
+
+pub struct AuthorizationCallback {
+    pub code: String,
+    pub redirect_uri: String,
+    pub code_verifier: String,
+    pub nonce: String,
+}
+
+impl OAuthAttempt {
+    pub async fn bind() -> Result<Self, String> {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
+            .await
+            .map_err(|error| format!("OAuth loopback 서버를 열 수 없습니다: {error}"))?;
+        let port = listener
+            .local_addr()
+            .map_err(|error| format!("OAuth loopback 주소를 확인할 수 없습니다: {error}"))?
+            .port();
+
+        Ok(Self {
+            listener,
+            redirect_uri: format!("http://127.0.0.1:{port}{CALLBACK_PATH}"),
+            state: random_urlsafe(32)?,
+            nonce: random_urlsafe(32)?,
+            code_verifier: random_urlsafe(64)?,
+        })
+    }
+
+    pub fn authorization_url(
+        &self,
+        client_id: &str,
+        scopes: &[&str],
+        allowed_domain: Option<&str>,
+    ) -> Result<Url, String> {
+        if client_id.trim().is_empty() || !scopes.contains(&"openid") {
+            return Err("Google OIDC에는 client ID와 openid scope가 필요합니다.".to_string());
+        }
+        let mut url = Url::parse(AUTH_ENDPOINT)
+            .map_err(|error| format!("Google OAuth URL이 올바르지 않습니다: {error}"))?;
+        let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(self.code_verifier.as_bytes()));
+
+        {
+            let mut query = url.query_pairs_mut();
+            query.append_pair("client_id", client_id);
+            query.append_pair("redirect_uri", &self.redirect_uri);
+            query.append_pair("response_type", "code");
+            query.append_pair("scope", &scopes.join(" "));
+            query.append_pair("code_challenge", &challenge);
+            query.append_pair("code_challenge_method", "S256");
+            query.append_pair("state", &self.state);
+            query.append_pair("nonce", &self.nonce);
+            query.append_pair("access_type", "offline");
+            if let Some(domain) = allowed_domain {
+                query.append_pair("hd", domain);
+            }
+        }
+
+        Ok(url)
+    }
+
+    pub async fn wait_for_callback(
+        self,
+        total_timeout: Duration,
+    ) -> Result<AuthorizationCallback, String> {
+        let deadline = Instant::now() + total_timeout;
+
+        loop {
+            let (mut stream, _) = timeout_at(deadline, self.listener.accept())
+                .await
+                .map_err(|_| "Google OAuth 인증 시간이 초과되었습니다.".to_string())?
+                .map_err(|error| format!("OAuth callback 연결을 받을 수 없습니다: {error}"))?;
+
+            let target = match read_request_target(&mut stream, deadline).await {
+                Ok(target) => target,
+                Err(error) => {
+                    respond(&mut stream, 400, "잘못된 요청입니다.").await;
+                    if Instant::now() >= deadline {
+                        return Err(error);
+                    }
+                    continue;
+                }
+            };
+            let callback_url = match Url::parse(&format!("http://127.0.0.1{target}")) {
+                Ok(url) if url.path() == CALLBACK_PATH => url,
+                _ => {
+                    respond(&mut stream, 404, "요청한 경로가 없습니다.").await;
+                    continue;
+                }
+            };
+
+            let returned_state = match unique_query_value(&callback_url, "state") {
+                Ok(Some(value)) if value == self.state => value,
+                _ => {
+                    respond(&mut stream, 400, "인증 요청을 확인할 수 없습니다.").await;
+                    continue;
+                }
+            };
+            drop(returned_state);
+
+            if let Ok(Some(provider_error)) = unique_query_value(&callback_url, "error") {
+                respond(
+                    &mut stream,
+                    200,
+                    "인증이 취소되었습니다. 앱으로 돌아가세요.",
+                )
+                .await;
+                return Err(format!(
+                    "Google OAuth가 오류를 반환했습니다: {provider_error}"
+                ));
+            }
+
+            let code = match unique_query_value(&callback_url, "code") {
+                Ok(Some(code)) => code,
+                _ => {
+                    respond(&mut stream, 400, "인증 코드가 없습니다.").await;
+                    continue;
+                }
+            };
+
+            respond(
+                &mut stream,
+                200,
+                "인증이 완료되었습니다. 이 창을 닫고 앱으로 돌아가세요.",
+            )
+            .await;
+            return Ok(AuthorizationCallback {
+                code,
+                redirect_uri: self.redirect_uri,
+                code_verifier: self.code_verifier,
+                nonce: self.nonce,
+            });
+        }
+    }
+}
+
+fn random_urlsafe(byte_len: usize) -> Result<String, String> {
+    let mut bytes = vec![0_u8; byte_len];
+    SysRng
+        .try_fill_bytes(&mut bytes)
+        .map_err(|error| format!("운영체제 보안 난수를 생성할 수 없습니다: {error}"))?;
+    Ok(URL_SAFE_NO_PAD.encode(bytes))
+}
+
+async fn read_request_target(stream: &mut TcpStream, deadline: Instant) -> Result<String, String> {
+    let mut request = Vec::with_capacity(1024);
+    let read_deadline = min(deadline, Instant::now() + CONNECTION_TIMEOUT);
+
+    loop {
+        let mut buffer = [0_u8; 1024];
+        let count = timeout_at(read_deadline, stream.read(&mut buffer))
+            .await
+            .map_err(|_| "OAuth callback 요청 읽기 시간이 초과되었습니다.".to_string())?
+            .map_err(|error| format!("OAuth callback 요청을 읽을 수 없습니다: {error}"))?;
+        if count == 0 {
+            break;
+        }
+        request.extend_from_slice(&buffer[..count]);
+        if request.windows(4).any(|window| window == b"\r\n\r\n") {
+            break;
+        }
+        if request.len() > MAX_REQUEST_BYTES {
+            return Err("OAuth callback 요청이 너무 큽니다.".to_string());
+        }
+    }
+
+    let request = std::str::from_utf8(&request)
+        .map_err(|_| "OAuth callback 요청이 UTF-8이 아닙니다.".to_string())?;
+    let mut fields = request
+        .lines()
+        .next()
+        .ok_or_else(|| "OAuth callback 요청 줄이 없습니다.".to_string())?
+        .split_whitespace();
+    let method = fields.next().unwrap_or_default();
+    let target = fields.next().unwrap_or_default();
+    let version = fields.next().unwrap_or_default();
+
+    if method != "GET" || !target.starts_with('/') || !version.starts_with("HTTP/1.") {
+        return Err("OAuth callback 요청 형식이 올바르지 않습니다.".to_string());
+    }
+    Ok(target.to_string())
+}
+
+fn unique_query_value(url: &Url, name: &str) -> Result<Option<String>, ()> {
+    let values: Vec<String> = url
+        .query_pairs()
+        .filter_map(|(key, value)| (key == name).then(|| value.into_owned()))
+        .collect();
+    match values.as_slice() {
+        [] => Ok(None),
+        [value] => Ok(Some(value.clone())),
+        _ => Err(()),
+    }
+}
+
+async fn respond(stream: &mut TcpStream, status: u16, message: &str) {
+    let reason = match status {
+        200 => "OK",
+        404 => "Not Found",
+        _ => "Bad Request",
+    };
+    let body = format!(
+        "<!doctype html><meta charset=\"utf-8\"><title>Google OAuth</title><p>{message}</p>"
+    );
+    let response = format!(
+        "HTTP/1.1 {status} {reason}\r\n\
+         Content-Type: text/html; charset=utf-8\r\n\
+         Cache-Control: no-store\r\n\
+         Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'\r\n\
+         Connection: close\r\n\
+         Content-Length: {}\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    let _ = stream.write_all(response.as_bytes()).await;
+    let _ = stream.shutdown().await;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn send_callback(redirect_uri: &str, query: &str) {
+        let url = Url::parse(redirect_uri).unwrap();
+        let address = format!("127.0.0.1:{}", url.port().unwrap());
+        let mut stream = TcpStream::connect(address).await.unwrap();
+        let request = format!(
+            "GET {}?{} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n",
+            url.path(),
+            query
+        );
+        stream.write_all(request.as_bytes()).await.unwrap();
+        let mut response = Vec::new();
+        stream.read_to_end(&mut response).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn authorization_url_uses_pkce_state_nonce_and_dynamic_loopback_port() {
+        let attempt = OAuthAttempt::bind().await.expect("loopback bind 실패");
+        let url = attempt
+            .authorization_url(
+                "client.apps.googleusercontent.com",
+                &["openid", "email"],
+                None,
+            )
+            .expect("authorization URL 생성 실패");
+        let params: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
+
+        assert_eq!(url.host_str(), Some("accounts.google.com"));
+        assert_eq!(
+            params.get("code_challenge_method").map(String::as_str),
+            Some("S256")
+        );
+        assert!(params.contains_key("state"));
+        assert!(params.contains_key("nonce"));
+        assert!(
+            params
+                .get("redirect_uri")
+                .is_some_and(|uri| uri.starts_with("http://127.0.0.1:"))
+        );
+    }
+
+    #[test]
+    fn duplicated_security_parameter_is_rejected() {
+        let url = Url::parse("http://127.0.0.1/oauth/callback?state=a&state=b").unwrap();
+        assert!(unique_query_value(&url, "state").is_err());
+    }
+
+    #[tokio::test]
+    async fn wrong_state_does_not_block_the_valid_callback() {
+        let attempt = OAuthAttempt::bind().await.unwrap();
+        let redirect_uri = attempt.redirect_uri.clone();
+        let state = attempt.state.clone();
+        let waiter = tokio::spawn(attempt.wait_for_callback(Duration::from_secs(2)));
+
+        send_callback(&redirect_uri, "state=wrong&code=attacker").await;
+        send_callback(&redirect_uri, &format!("state={state}&code=valid-code")).await;
+
+        let callback = waiter.await.unwrap().unwrap();
+        assert_eq!(callback.code, "valid-code");
+    }
+
+    #[tokio::test]
+    async fn listener_stops_after_the_total_timeout() {
+        let attempt = OAuthAttempt::bind().await.unwrap();
+        let result = attempt.wait_for_callback(Duration::from_millis(10)).await;
+        assert!(result.is_err());
+    }
+}

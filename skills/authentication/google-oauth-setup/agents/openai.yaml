@@ -1,0 +1,4 @@
+interface:
+  display_name: "Google OAuth for Tauri 2"
+  short_description: "Tauri 2 데스크톱 Google OAuth 보안 설정"
+  default_prompt: "$google-oauth-setup을 사용해 이 Tauri 2 데스크톱 앱의 Google 로그인을 안전하게 설정해줘."

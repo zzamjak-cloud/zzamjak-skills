@@ -21,9 +21,11 @@ scripts/
 
 현재 카테고리는 다음과 같다.
 
-| 카테고리 | 용도 |
-| --- | --- |
-| `blender` | Blender 애드온·Extension 개발 및 배포 |
+| 카테고리 | 스킬 | 용도 |
+| --- | --- | --- |
+| `authentication` | `google-oauth-setup` | Google OAuth 2.0 PKCE 인증 구성 |
+| `blender` | `blender-addon-release-workflow` | Blender 애드온·Extension 개발 및 배포 |
+| `tauri` | `tauri-project-setup` | Tauri 2 프로젝트 생성 및 기존 프런트엔드 통합 |
 
 카테고리는 소문자 영문·숫자·하이픈으로 만들고, 스킬 이름은 저장소 전체에서 고유하게 유지한다. 각 스킬 폴더 이름은 `SKILL.md`의 `name`과 같아야 한다.
 
@@ -45,11 +47,13 @@ cd zzamjak-skills
 ./scripts/link-skills.ps1
 ```
 
-기본 대상은 `~/.codex/skills`와 `~/.claude/skills`다. 같은 이름의 기존 파일이나 디렉터리가 있으면 덮어쓰지 않고 중단한다. 기존 항목을 타임스탬프 백업으로 옮긴 뒤 연결하려면 `--backup-existing` 또는 `-BackupExisting`을 사용한다.
+기본 대상은 Codex 공식 개인 스킬 경로 `~/.agents/skills`와 Claude Code 개인 스킬 경로 `~/.claude/skills`다. 설치 스크립트는 카테고리에 관계없이 저장소의 모든 중앙 스킬을 두 경로에 연결한다. 같은 이름의 기존 파일이나 디렉터리가 있으면 덮어쓰지 않고 중단한다. 기존 항목을 타임스탬프 백업으로 옮긴 뒤 연결하려면 `--backup-existing` 또는 `-BackupExisting`을 사용한다.
+
+구버전 경로 `~/.codex/skills`에 같은 스킬이 남아 있으면 Codex에서 중복 노출될 수 있다. 새 경로 연결을 확인한 뒤 구버전 링크를 직접 확인하고 제거한다.
 
 Codex만 연결하려면 `--codex-only`, Claude Code만 연결하려면 `--claude-only`를 사용한다. Windows에서는 각각 `-CodexOnly`, `-ClaudeOnly`다.
 
-이후 macOS·Linux 업데이트는 다음처럼 실행한다. 기존 스킬 수정은 링크된 두 도구에 즉시 반영되고, 연결 스크립트의 멱등 재실행으로 새 스킬 링크도 추가된다.
+이후 macOS·Linux 업데이트는 다음처럼 실행한다. 기존 스킬 수정은 링크된 두 도구에 즉시 반영되고, 연결 스크립트의 멱등 재실행으로 새로 추가된 중앙 스킬도 모두 연결된다.
 
 ```bash
 cd zzamjak-skills

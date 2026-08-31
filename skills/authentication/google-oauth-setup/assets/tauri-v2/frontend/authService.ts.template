@@ -1,0 +1,27 @@
+import { invoke } from '@tauri-apps/api/core'
+
+export interface GoogleUser {
+  sub: string
+  email: string
+  name?: string
+  picture?: string
+  hostedDomain?: string
+}
+
+// 토큰과 인증 코드는 Rust 경계를 넘기지 않는다.
+export async function signInWithGoogle(): Promise<GoogleUser> {
+  return invoke<GoogleUser>('google_oauth_sign_in')
+}
+
+export async function getGoogleSessionUser(): Promise<GoogleUser | null> {
+  return invoke<GoogleUser | null>('google_oauth_session_user')
+}
+
+// 로컬 로그아웃은 Google 권한 폐기와 별개다.
+export async function signOutGoogleLocally(): Promise<void> {
+  await invoke('google_oauth_sign_out_local')
+}
+
+export async function disconnectGoogle(): Promise<void> {
+  await invoke('google_oauth_revoke')
+}

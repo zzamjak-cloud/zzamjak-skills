@@ -1,0 +1,6 @@
+interface:
+  display_name: "Tauri 프로젝트 설정"
+  short_description: "Tauri 2 React 프로젝트를 안전하게 생성하고 확장"
+  default_prompt: "$tauri-project-setup을 사용해 Tauri 2 + React + TypeScript 프로젝트를 안전하게 생성해줘."
+policy:
+  allow_implicit_invocation: true

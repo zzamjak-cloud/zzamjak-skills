@@ -22,7 +22,7 @@ jobs:
       - name: Bash와 스킬 검증
         shell: bash
         run: |
-          bash -n scripts/link-skills.sh scripts/validate.sh
+          bash -n scripts/link-skills.sh scripts/validate.sh scripts/validate-oauth-rust-template.sh
           ./scripts/validate.sh
           python scripts/validate_skills.py
           mkdir -p skills/invalid/depth/skill
@@ -37,20 +37,37 @@ jobs:
           fi
           unlink skills/invalid/depth/skill/SKILL.md
           rmdir skills/invalid/depth/skill skills/invalid/depth skills/invalid
+      - name: Google OAuth Rust 템플릿 검증
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt
+          rustup default stable
+          ./scripts/validate-oauth-rust-template.sh
       - name: 격리 링크 설치와 멱등성 검증
         shell: bash
         env:
-          CODEX_HOME: ${{ runner.temp }}/codex
+          CODEX_SKILLS_DIR: ${{ runner.temp }}/agents/skills
+          CODEX_HOME: ${{ runner.temp }}/legacy-codex
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude
         run: |
           ./scripts/link-skills.sh
           while IFS= read -r skill_file; do
             expected="$(dirname "$skill_file")"
             skill_name="$(basename "$expected")"
-            test "$(readlink "$CODEX_HOME/skills/$skill_name")" = "$expected"
+            test "$(readlink "$CODEX_SKILLS_DIR/$skill_name")" = "$expected"
             test "$(readlink "$CLAUDE_CONFIG_DIR/skills/$skill_name")" = "$expected"
           done < <(find "$GITHUB_WORKSPACE/skills" -name SKILL.md | sort)
+          test ! -e "$CODEX_HOME/skills"
           ./scripts/link-skills.sh
+
+          export CODEX_SKILLS_DIR="${RUNNER_TEMP}/codex-only/agents/skills"
+          export CLAUDE_CONFIG_DIR="${RUNNER_TEMP}/codex-only/claude"
+          ./scripts/link-skills.sh --codex-only
+          while IFS= read -r skill_file; do
+            skill_name="$(basename "$(dirname "$skill_file")")"
+            test -L "$CODEX_SKILLS_DIR/$skill_name"
+          done < <(find "$GITHUB_WORKSPACE/skills" -name SKILL.md | sort)
+          test ! -e "$CLAUDE_CONFIG_DIR/skills"
 
   windows-powershell-7:
     runs-on: windows-latest
@@ -60,7 +77,8 @@ jobs:
       - name: PowerShell 7 격리 링크 설치와 멱등성 검증
         shell: pwsh
         env:
-          CODEX_HOME: ${{ runner.temp }}\codex
+          CODEX_SKILLS_DIR: ${{ runner.temp }}\agents\skills
+          CODEX_HOME: ${{ runner.temp }}\legacy-codex
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}\claude
         run: |
           ./scripts/link-skills.ps1
@@ -69,7 +87,7 @@ jobs:
           Get-ChildItem -Path skills -Filter "SKILL.md" -File -Recurse | ForEach-Object {
               $expected = $_.Directory.FullName
               $skillName = $_.Directory.Name
-              $codexLink = Get-Item -LiteralPath "$env:CODEX_HOME/skills/$skillName" -Force
+              $codexLink = Get-Item -LiteralPath "$env:CODEX_SKILLS_DIR/$skillName" -Force
               $claudeLink = Get-Item -LiteralPath "$env:CLAUDE_CONFIG_DIR/skills/$skillName" -Force
 
               if (-not $codexLink.LinkType -or $codexLink.Target -ne $expected) {
@@ -78,4 +96,24 @@ jobs:
               if (-not $claudeLink.LinkType -or $claudeLink.Target -ne $expected) {
                   throw "Claude Code 링크 대상이 중앙 스킬과 다릅니다: $skillName"
               }
+          }
+
+          if (Test-Path -LiteralPath "$env:CODEX_HOME/skills") {
+              throw "구버전 CODEX_HOME 기반 경로를 사용했습니다."
+          }
+
+          $env:CODEX_SKILLS_DIR = Join-Path $env:RUNNER_TEMP "codex-only/agents/skills"
+          $env:CLAUDE_CONFIG_DIR = Join-Path $env:RUNNER_TEMP "codex-only/claude"
+          ./scripts/link-skills.ps1 -CodexOnly
+
+          Get-ChildItem -Path skills -Filter "SKILL.md" -File -Recurse | ForEach-Object {
+              $skillName = $_.Directory.Name
+              $codexLink = Get-Item -LiteralPath (Join-Path $env:CODEX_SKILLS_DIR $skillName) -Force
+              if (-not $codexLink.LinkType) {
+                  throw "Codex 전용 설치 링크가 없습니다: $skillName"
+              }
+          }
+
+          if (Test-Path -LiteralPath "$env:CLAUDE_CONFIG_DIR/skills") {
+              throw "Codex 전용 설치가 Claude Code 경로를 수정했습니다."
           }

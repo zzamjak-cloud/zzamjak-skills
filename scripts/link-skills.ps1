@@ -20,8 +20,8 @@ $Timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $Targets = @()
 
 if (-not $ClaudeOnly) {
-    $CodexConfigRoot = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME ".codex" }
-    $Targets += Join-Path $CodexConfigRoot "skills"
+    $CodexSkillsRoot = if ($env:CODEX_SKILLS_DIR) { $env:CODEX_SKILLS_DIR } else { Join-Path $HOME ".agents/skills" }
+    $Targets += $CodexSkillsRoot
 }
 
 if (-not $CodexOnly) {

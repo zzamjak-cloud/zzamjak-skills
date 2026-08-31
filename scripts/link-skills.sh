@@ -4,7 +4,7 @@ set -euo pipefail
 script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 repo_root="$(dirname -- "$script_dir")"
 skills_root="$repo_root/skills"
-codex_root="${CODEX_HOME:-${HOME}/.codex}/skills"
+codex_root="${CODEX_SKILLS_DIR:-${HOME}/.agents/skills}"
 claude_root="${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/skills"
 install_codex=true
 install_claude=true
@@ -108,4 +108,3 @@ fi
 if [[ "$install_claude" == true ]]; then
   install_for_target "$claude_root"
 fi
-
