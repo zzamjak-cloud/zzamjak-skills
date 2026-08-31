@@ -23,6 +23,7 @@ scripts/
 
 | 카테고리 | 스킬 | 용도 |
 | --- | --- | --- |
+| `ai` | `google-ai-setup` | Gemini API 기반 AI 기능 통합 |
 | `authentication` | `google-oauth-setup` | Google OAuth 2.0 PKCE 인증 구성 |
 | `blender` | `blender-addon-release-workflow` | Blender 애드온·Extension 개발 및 배포 |
 | `tauri` | `tauri-project-setup` | Tauri 2 프로젝트 생성 및 기존 프런트엔드 통합 |
