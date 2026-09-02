@@ -1,0 +1,6 @@
+interface:
+  display_name: "Unity 패키지 OpenUPM 배포"
+  short_description: "com.zzamjak 패키지 분리·CAT 규약 정리·OpenUPM 등록 절차"
+  default_prompt: "$unity-openupm-release를 사용해 이 기능을 com.zzamjak 패키지로 분리하고 OpenUPM 배포까지 준비해줘."
+policy:
+  allow_implicit_invocation: true

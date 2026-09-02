@@ -28,6 +28,7 @@ scripts/
 | `authentication` | `google-oauth-setup` | Google OAuth 2.0 PKCE 인증 구성 |
 | `blender` | `blender-addon-release-workflow` | Blender 애드온·Extension 개발 및 배포 |
 | `tauri` | `tauri-project-setup` | Tauri 2 프로젝트 생성 및 기존 프런트엔드 통합 |
+| `unity` | `unity-openupm-release` | Unity 기능의 `com.zzamjak` UPM 패키지 분리 및 OpenUPM 배포 |
 
 카테고리는 소문자 영문·숫자·하이픈으로 만들고, 스킬 이름은 저장소 전체에서 고유하게 유지한다. 각 스킬 폴더 이름은 `SKILL.md`의 `name`과 같아야 한다.
 
