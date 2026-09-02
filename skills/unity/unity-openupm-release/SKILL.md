@@ -14,6 +14,7 @@ Unity 기능을 임베디드 UPM 패키지로 분리하고 OpenUPM 에 등록하
 - 어셈블리 이름과 루트 네임스페이스는 `CAT.<PascalProjectName>`, 에디터 메뉴 최상위는 `CAT` 이다.
 - **외부 패키지 의존성을 두지 않는다.** `package.json` 의 `dependencies` 는 Unity 내장 모듈(`com.unity.modules.*`)과 `com.unity.ugui` 수준까지만 허용하고, 그 외 레지스트리·git 의존성은 넣지 않는다. 선택 기능이 특정 패키지를 쓰면 의존성 대신 README 요구 사항 + asmdef `versionDefines` 분기 + 셰이더 내장 파이프라인 폴백으로 처리한다.
   - **예외 — 렌더 파이프라인 전용 패키지.** 셰이더가 URP 셰이더 라이브러리를 인클루드하고 C# 이 `UnityEngine.Rendering.Universal` 을 쓰는 등 URP 없이는 어떤 기능도 동작하지 않는 패키지는 `com.unity.render-pipelines.universal` 을 `dependencies` 에 선언한다(Water2D·OceanFlow 선례). URP 가 없는 프로젝트에서 패키지가 목록에서 사라지는 것은 그 프로젝트에서 어차피 쓸 수 없으므로 감수한다. 이 경우 검증 스크립트에 `--allow-dependency com.unity.render-pipelines.universal` 을 넘기고 README 요구 사항에도 명시한다. 사용자에게 한 번 확인한 뒤 진행한다.
+- **라이선스는 `GPL-3.0-only` 로 고정한다.** 저작권자는 `zzamjak`. 다음 여섯 곳의 표기가 항상 일치해야 한다: `package.json` 의 `license`·`licensesUrl`, 패키지 폴더의 `LICENSE.md`·`NOTICE.md`(+ `.meta`), 레포 루트의 `LICENSE`·`NOTICE.md`, 루트·패키지 README 의 배지와 `## 라이선스` 절, OpenUPM 등록 yml 의 `licenseSpdxId: GPL-3.0-only` / `licenseName: GNU General Public License v3.0 only`. 라이선스 본문은 새로 받지 않고 기존 패키지(Water2D 등)의 `LICENSE.md` 를 그대로 복사한다. 이미 배포된 버전의 라이선스를 바꾸려면 패치 버전을 올려 재배포한다(Water2D 1.0.1 선례). MIT 등 다른 라이선스 요청은 사용자에게 확인한 뒤에만 반영한다.
 - 최초 배포 버전은 `1.0.0`, git 태그는 `v1.0.0` 이다. `package.json` 의 `version`, CHANGELOG 최상단 항목, git 태그 세 값은 항상 같아야 한다.
 - 기존 원격 태그를 재사용하거나 강제 갱신하지 않는다. 잘못 배포한 버전은 되돌리지 않고 패치 버전을 올린다.
 - 공개 레포 생성, push, tag, Release, OpenUPM PR 은 현재 요청이 명시적으로 승인한 범위에서만 실행한다. "나중에", "준비해 달라" 같은 표현은 로컬 준비까지만 승인한다.
@@ -76,7 +77,8 @@ TEMPLATE=$(ls "$EDITOR"/Contents/Resources/PackageManager/ProjectTemplates/com.u
 
 - `package.json` 을 [템플릿](references/templates.md)대로 작성한다. `documentationUrl`·`changelogUrl`·`licensesUrl` 은 GitHub 절대 URL 로 채우되, **레포 안에 실제로 존재하는 경로**를 가리켜야 한다. 패키지가 서브폴더에 있으므로 `blob/main/CHANGELOG.md` 가 아니라 `blob/main/Packages/com.zzamjak.<name>/CHANGELOG.md` 다. 틀리면 Package Manager 의 링크가 404 로 죽는다.
 - `unity` 필드는 `"6000.0"` 형식(메이저.마이너)만 쓴다. 패치까지 적으면 무시되거나 경고가 난다.
-- `README.md`, `CHANGELOG.md`, `LICENSE.md`, (라이선스가 GPL 이면) `NOTICE.md` 를 패키지 폴더 안에 둔다.
+- `README.md`, `CHANGELOG.md`, `LICENSE.md`, `NOTICE.md` 를 패키지 폴더 안에 둔다. `LICENSE.md` 는 기존 패키지의 GPL-3.0 본문을 복사하고, `NOTICE.md` 는 [템플릿](references/templates.md#noticemd)의 프로젝트 이름만 바꾼다. 같은 두 파일을 레포 루트에도 `LICENSE`(확장자 없음)·`NOTICE.md` 로 둔다 — OpenUPM 등록 조건이 루트 라이선스 파일이다.
+- 패키지 README 끝에 `## 라이선스` 절을 넣어 GPL-3.0-only 와 저작권자, 재배포 조건을 한 문단으로 적고 `LICENSE.md`·`NOTICE.md` 로 링크한다. 루트 README 에는 배지와 `## 라이선스` 절을 둔다.
 - 패키지 폴더 안의 모든 파일·폴더에 `.meta` 가 있어야 한다. `Samples~` 폴더 **자체**는 Unity 에 보이지 않으므로 `.meta` 를 만들지 않지만, 그 **내부** 파일은 임포트 시 에셋이 되므로 `.meta` 가 필요하다.
 - 샘플이 있으면 `package.json` 의 `samples[].path` 를 `Samples~/<Folder>` 로 정확히 맞춘다.
 
@@ -158,4 +160,5 @@ gh release create v1.0.0 --title "v1.0.0" --notes-file <CHANGELOG 발췌>
 - 원격 레포가 공개 상태이며 `v1.0.0` 태그와 Release 가 있다.
 - OpenUPM 패키지 페이지에서 `1.0.0` 버전이 색인됐다.
 - `package.json` version = CHANGELOG 최상단 = git 태그 세 값이 일치한다.
+- 라이선스 표기 여섯 곳이 전부 `GPL-3.0-only` 로 일치하고, `LICENSE.md`·`NOTICE.md` 에 `.meta` 가 있다.
 - 미완료 항목이 있으면 완료로 보고하지 않고 남은 항목을 명시한다.

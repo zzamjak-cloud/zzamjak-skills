@@ -124,6 +124,39 @@ namespace ASM_NAME
 }
 ```
 
+## NOTICE.md
+
+패키지 폴더와 레포 루트에 같은 내용으로 둔다. `PROJECT_NAME` 만 바꾼다.
+
+```markdown
+PROJECT_NAME Copyright and Authorship Notice
+
+Copyright (C) 2026 zzamjak.
+
+PROJECT_NAME is authored and copyrighted by zzamjak.
+
+This project is distributed under the GNU General Public License v3.0 only
+(`GPL-3.0-only`). Redistributed copies, modified versions, and derivative works
+must preserve this copyright notice and must be distributed under GPL-3.0-only.
+
+Redistribution as proprietary or closed-source software is not permitted.
+The GPLv3 requires source availability for distributed copies and derivative
+works. A distributor may not remove the GPL obligations, claim the original work
+as their own, or impose additional restrictions that make the software
+proprietary.
+```
+
+## 패키지 README 의 라이선스 절
+
+패키지 폴더 `README.md` 끝에 붙인다.
+
+```markdown
+## 라이선스
+
+GNU General Public License v3.0 only (`GPL-3.0-only`). 저작권자 zzamjak.
+재배포·수정본·파생 저작물은 이 고지를 유지하고 같은 라이선스로 배포해야 한다. [LICENSE](LICENSE.md), [NOTICE](NOTICE.md) 참고.
+```
+
 ## .gitignore (레포 루트)
 
 ```gitignore

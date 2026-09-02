@@ -24,6 +24,9 @@ WARNINGS: list[str] = []
 ALLOWED_DEPENDENCY_PREFIXES = ("com.unity.modules.",)
 ALLOWED_DEPENDENCIES = {"com.unity.ugui"}
 
+# 모든 com.zzamjak.* 패키지의 고정 라이선스
+REQUIRED_LICENSE = "GPL-3.0-only"
+
 REQUIRED_PACKAGE_FIELDS = (
     "name",
     "displayName",
@@ -147,6 +150,18 @@ def check_package_json(package_dir: Path, allowed_extra: set[str]) -> dict | Non
 
     if not data.get("licensesUrl"):
         warn("licensesUrl 이 없습니다. Package Manager 의 License 링크가 비게 됩니다.")
+
+    # 라이선스 정책: GPL-3.0-only 고정. 표기가 여러 곳에 흩어져 있어 하나라도 어긋나면 잡는다.
+    license_id = data.get("license")
+    if license_id != REQUIRED_LICENSE:
+        err(f"package.json license 는 {REQUIRED_LICENSE!r} 여야 합니다: {license_id!r}")
+    if not (package_dir / "NOTICE.md").is_file():
+        err("패키지 안에 NOTICE.md(저작권·GPL 고지)가 없습니다.")
+    license_file = package_dir / "LICENSE.md"
+    if license_file.is_file():
+        body = license_file.read_text(encoding="utf-8", errors="replace")
+        if "GNU GENERAL PUBLIC LICENSE" not in body.upper() or "Version 3" not in body:
+            err("패키지 LICENSE.md 가 GPL-3.0 본문이 아닙니다. 기존 패키지의 LICENSE.md 를 복사하세요.")
 
     dependencies = data.get("dependencies") or {}
     if not isinstance(dependencies, dict):
@@ -491,6 +506,18 @@ def check_release_assets(project: Path, package_name: str) -> None:
 
     if not any(project.glob("LICENSE*")):
         err("레포 루트에 LICENSE 파일이 없습니다. OpenUPM 등록 조건입니다.")
+    if not (project / "NOTICE.md").is_file():
+        warn("레포 루트에 NOTICE.md 가 없습니다. 패키지 폴더의 NOTICE.md 를 복사하세요.")
+    if readme.is_file():
+        text = readme.read_text(encoding="utf-8", errors="replace")
+        if REQUIRED_LICENSE not in text and "GPL--3.0--only" not in text:
+            warn(f"루트 README 에 {REQUIRED_LICENSE} 표기(배지 또는 라이선스 절)가 없습니다.")
+
+    openupm_meta = project / "openupm-package.yml"
+    if openupm_meta.is_file():
+        text = openupm_meta.read_text(encoding="utf-8", errors="replace")
+        if f"licenseSpdxId: {REQUIRED_LICENSE}" not in text:
+            err(f"openupm-package.yml 의 licenseSpdxId 가 {REQUIRED_LICENSE} 가 아닙니다.")
 
     workflow = project / ".github" / "workflows" / "openupm.yml"
     if not workflow.is_file():

@@ -10,7 +10,7 @@
 ├── .gitignore
 ├── README.md                               # OpenUPM 설치법 + 사용법 (정본)
 ├── LICENSE
-├── NOTICE.md                               # GPL 계열일 때만
+├── NOTICE.md                               # 저작권·GPL 고지 (항상)
 ├── openupm-package.yml                     # OpenUPM 등록 메타데이터 사본 (참고용)
 ├── Assets/
 │   └── .gitkeep                            # 데모/테스트 씬을 두는 곳
