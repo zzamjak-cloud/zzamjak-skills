@@ -93,6 +93,7 @@ using UnityEditor;
 
 - Unity 내장 모듈(`com.unity.modules.*`)과 `com.unity.ugui` 는 모든 프로젝트에 사실상 존재하므로 허용한다.
 - URP·Input System·Cinemachine 등 선택 패키지는 `dependencies` 에 넣지 않는다. 넣으면 설치자의 프로젝트 구성을 강제하고, 버전이 안 맞을 때 **패키지 해석 자체가 실패해 패키지가 목록에서 사라진다.**
+- 단, **패키지 전체가 특정 렌더 파이프라인 없이는 동작하지 않는 경우**(URP 셰이더 라이브러리 인클루드 + `UnityEngine.Rendering.Universal` 사용)는 그 파이프라인을 선언한다. 폴백이 존재하지 않으므로 `versionDefines` 분기는 의미가 없고, 선언이 오히려 설치 시점에 요구 사항을 드러낸다. Water2D·OceanFlow 가 `"com.unity.render-pipelines.universal": "17.0.4"` 를 선언한다. 검증 스크립트에는 `--allow-dependency` 로 예외를 명시한다.
 - 선택 패키지 기능이 필요하면 이렇게 처리한다.
   1. README 요구 사항에 명시한다.
   2. asmdef `versionDefines` 로 심볼을 만들고 `#if` 로 코드 경로를 분기한다.

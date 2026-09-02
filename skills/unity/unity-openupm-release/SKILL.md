@@ -12,7 +12,8 @@ Unity 기능을 임베디드 UPM 패키지로 분리하고 OpenUPM 에 등록하
 - GitHub 소유자는 `zzamjak-cloud`, 레포 이름은 프로젝트 이름과 동일한 **공개** 레포다.
 - 패키지 이름은 `com.zzamjak.<소문자프로젝트명>` 이며, 임베디드 경로는 `Packages/com.zzamjak.<소문자프로젝트명>/` 로 정확히 일치시킨다.
 - 어셈블리 이름과 루트 네임스페이스는 `CAT.<PascalProjectName>`, 에디터 메뉴 최상위는 `CAT` 이다.
-- **외부 패키지 의존성을 두지 않는다.** `package.json` 의 `dependencies` 는 Unity 내장 모듈(`com.unity.modules.*`)과 `com.unity.ugui` 수준까지만 허용하고, 그 외 레지스트리·git 의존성은 넣지 않는다. URP 등 렌더 파이프라인이 꼭 필요하면 의존성 대신 README 요구 사항으로 문서화하고 셰이더를 내장 경로로 폴백시킨다.
+- **외부 패키지 의존성을 두지 않는다.** `package.json` 의 `dependencies` 는 Unity 내장 모듈(`com.unity.modules.*`)과 `com.unity.ugui` 수준까지만 허용하고, 그 외 레지스트리·git 의존성은 넣지 않는다. 선택 기능이 특정 패키지를 쓰면 의존성 대신 README 요구 사항 + asmdef `versionDefines` 분기 + 셰이더 내장 파이프라인 폴백으로 처리한다.
+  - **예외 — 렌더 파이프라인 전용 패키지.** 셰이더가 URP 셰이더 라이브러리를 인클루드하고 C# 이 `UnityEngine.Rendering.Universal` 을 쓰는 등 URP 없이는 어떤 기능도 동작하지 않는 패키지는 `com.unity.render-pipelines.universal` 을 `dependencies` 에 선언한다(Water2D·OceanFlow 선례). URP 가 없는 프로젝트에서 패키지가 목록에서 사라지는 것은 그 프로젝트에서 어차피 쓸 수 없으므로 감수한다. 이 경우 검증 스크립트에 `--allow-dependency com.unity.render-pipelines.universal` 을 넘기고 README 요구 사항에도 명시한다. 사용자에게 한 번 확인한 뒤 진행한다.
 - 최초 배포 버전은 `1.0.0`, git 태그는 `v1.0.0` 이다. `package.json` 의 `version`, CHANGELOG 최상단 항목, git 태그 세 값은 항상 같아야 한다.
 - 기존 원격 태그를 재사용하거나 강제 갱신하지 않는다. 잘못 배포한 버전은 되돌리지 않고 패치 버전을 올린다.
 - 공개 레포 생성, push, tag, Release, OpenUPM PR 은 현재 요청이 명시적으로 승인한 범위에서만 실행한다. "나중에", "준비해 달라" 같은 표현은 로컬 준비까지만 승인한다.
@@ -37,7 +38,19 @@ Unity 기능을 임베디드 UPM 패키지로 분리하고 OpenUPM 에 등록하
 
 ### 2. 대상 Unity 프로젝트 준비
 
-- 대상 경로에 Unity 프로젝트가 없으면 만든다. `unity` CLI 가 있으면 CLI 로 생성하고, 없으면 Unity Hub 로 생성해 달라고 사용자에게 요청한다. 임의로 `ProjectSettings` 를 손으로 만들지 않는다.
+- 대상 경로에 Unity 프로젝트가 없으면 만든다. **`unity` CLI 에는 프로젝트 생성 명령이 없다** (`templates`·`projects` 는 Hub 레지스트리 관리용). 에디터 바이너리를 배치 모드로 직접 호출해 템플릿에서 생성한다. 임의로 `ProjectSettings` 를 손으로 만들지 않는다.
+
+```bash
+EDITOR=/Applications/Unity/Hub/Editor/<버전>/Unity.app
+TEMPLATE=$(ls "$EDITOR"/Contents/Resources/PackageManager/ProjectTemplates/com.unity.template.3d-cross-platform-*.tgz)
+"$EDITOR/Contents/MacOS/Unity" -batchmode -quit -nographics \
+  -createProject <프로젝트경로> -cloneFromTemplate "$TEMPLATE" -logFile <로그경로>
+```
+
+  - Unity 6 의 URP 3D 템플릿은 `com.unity.template.3d-cross-platform-*.tgz` 다(`3d-high-end` 는 HDRP). 원본 프로젝트와 같은 에디터 버전을 쓴다.
+  - 생성 직후 템플릿 잡동사니 `Assets/TutorialInfo/`, `Assets/Readme.asset` 을 `.meta` 와 함께 지운다. `Assets/Settings/` 의 URP 에셋과 `Packages/manifest.json` 은 Unity 가 만든 그대로 둔다.
+  - 패키지에 테스트가 있으면 `Packages/manifest.json` 에 `"testables": ["com.zzamjak.<name>"]` 를 추가한다. 없으면 Test Runner 와 `unity test` 가 패키지 테스트를 보지 못한다.
+  - 다른 프로젝트에서 Unity 에디터가 열려 있어도 별도 경로의 배치 인스턴스는 문제없이 돈다.
 - 최소 골격: `Assets/`, `Packages/manifest.json`, `ProjectSettings/ProjectVersion.txt`.
 - `Assets/.gitkeep` 를 두어 빈 `Assets` 가 git 에서 사라지지 않게 한다.
 
@@ -75,6 +88,14 @@ python3 ~/.claude/skills/unity-openupm-release/scripts/verify_upm_package.py <�
 
 - 오류가 하나라도 남으면 다음 단계로 넘어가지 않는다.
 - 렌더 파이프라인처럼 의존성 제거가 불가능하다고 사용자가 판단한 경우에만 `--allow-dependency com.unity.render-pipelines.universal` 로 예외를 명시한다. 예외는 README 요구 사항에도 반드시 기록한다.
+- 그다음 배치 모드로 컴파일·테스트·플레이어 빌드를 먼저 통과시킨다. 에디터 GUI 를 열지 않고도 세 가지 회귀(컴파일 에러, 패키지 테스트, Editor API 누출)를 잡는다.
+
+```bash
+unity test <프로젝트경로> --mode EditMode --filter "CAT.<Name>.Tests" --output <결과.xml> --timeout 900 --non-interactive
+unity build <프로젝트경로> --target StandaloneOSX --output-path <출력.app> --log-file <로그> --non-interactive
+```
+
+  결과 XML 의 `result="Passed"` 와 빌드 로그의 `Build Finished, Result: Success.` 를 확인한다. 하나라도 실패하면 GUI 확인으로 넘어가지 않는다.
 - 그다음 Unity 를 **완전히 종료한 상태에서** 열어 다음을 육안 확인한다.
   1. Project 창 `Packages` 노드에 `<displayName>` 이 보인다.
   2. Package Manager → In Project → Custom 에 패키지가 있다.
@@ -116,7 +137,8 @@ gh release create v1.0.0 --title "v1.0.0" --notes-file <CHANGELOG 발췌>
 
 ### 10. OpenUPM 등록 (필수)
 
-- [레포 및 릴리스](references/repo-and-release.md)의 절차대로 https://openupm.com/packages/add/ 에서 레포 URL 을 제출해 `openupm/openupm` 에 PR 을 만든다.
+- [레포 및 릴리스](references/repo-and-release.md)의 절차대로 `openupm/openupm` 에 등록 PR 을 만든다. 웹 폼(https://openupm.com/packages/add/) 대신 `gh` 로 fork → `data/packages/com.zzamjak.<name>.yml` 추가 → PR 을 만들 수 있다. 업스트림 기본 브랜치는 `master`, PR 제목은 `chore(data): new package com.zzamjak.<name>` 관례를 따른다.
+- PR 의 `Data validation` 체크가 통과하는지 `gh pr checks <번호> --repo openupm/openupm --watch` 로 확인한다. 실패하면 대개 `topics` slug 오류나 `licenseSpdxId` 불일치다.
 - 등록 메타데이터 사본을 레포 루트 `openupm-package.yml` 에 남긴다. 이 파일은 참고용이며 실제 등록 정보는 업스트림에 있다.
 - `.github/workflows/openupm.yml` 을 추가해 이후 태그 push 시 즉시 스캔이 트리거되게 한다.
 - 병합 후 https://openupm.com/packages/com.zzamjak.<name>/ 에서 `1.0.0` 이 실제로 색인됐는지 확인한다. 확인 전에는 완료라고 보고하지 않는다.

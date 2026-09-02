@@ -69,6 +69,30 @@ gh release create v1.0.0 --title "v1.0.0" --notes "<CHANGELOG 1.0.0 항목 발�
 https://openupm.com/packages/com.zzamjak.<name>/
 ```
 
+### `gh` 로 등록 PR 만들기 (웹 폼 대체)
+
+웹 폼이 하는 일은 `openupm/openupm` 에 yml 하나를 추가하는 PR 이므로 `gh` 로 같은 결과를 만들 수 있다. 태그 push 가 끝난 뒤에 실행한다.
+
+```bash
+gh repo fork openupm/openupm --clone=false            # 이미 fork 가 있으면 "already exists" 로 넘어간다
+git clone --depth 1 https://github.com/zzamjak-cloud/openupm.git && cd openupm
+git remote add upstream https://github.com/openupm/openupm.git
+DEF=$(gh api repos/openupm/openupm --jq .default_branch)  # master
+git fetch --depth 1 upstream "$DEF" && git checkout -B add-com.zzamjak.<name> "upstream/$DEF"
+# 허용 topics slug 확인
+gh api repos/openupm/openupm/contents/data/topics.yml --jq .content | base64 -d | grep slug
+# data/packages/com.zzamjak.<name>.yml 작성 (아래 4절 사본과 같은 내용, description 은 영문)
+git add data/packages/com.zzamjak.<name>.yml
+git commit -m "feat: add com.zzamjak.<name>"
+git push -u origin add-com.zzamjak.<name>
+gh pr create --repo openupm/openupm --base "$DEF" --head zzamjak-cloud:add-com.zzamjak.<name> \
+  --title "chore(data): new package com.zzamjak.<name>" --body "<레포 URL, 라이선스, 첫 태그>"
+gh pr checks <PR번호> --repo openupm/openupm --watch --fail-fast   # Data validation 통과 확인
+```
+
+- `createdAt` 은 현재 시각의 epoch 밀리초를 넣는다(웹 폼이 채우는 값과 같다).
+- 병합은 메인테이너/Mergify 가 처리한다. `Data validation` 통과 ≠ 색인 완료. 병합 후 패키지 페이지에서 버전이 뜬 것을 확인해야 완료다.
+
 등록 사전 조건:
 
 - 공개 GitHub 레포
