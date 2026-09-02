@@ -61,7 +61,7 @@ Unity 기능을 임베디드 UPM 패키지로 분리하고 OpenUPM 에 등록하
 
 ### 5. 패키지 메타데이터
 
-- `package.json` 을 [템플릿](references/templates.md)대로 작성한다. `documentationUrl`·`changelogUrl`·`licensesUrl` 은 GitHub 절대 URL 로 채운다.
+- `package.json` 을 [템플릿](references/templates.md)대로 작성한다. `documentationUrl`·`changelogUrl`·`licensesUrl` 은 GitHub 절대 URL 로 채우되, **레포 안에 실제로 존재하는 경로**를 가리켜야 한다. 패키지가 서브폴더에 있으므로 `blob/main/CHANGELOG.md` 가 아니라 `blob/main/Packages/com.zzamjak.<name>/CHANGELOG.md` 다. 틀리면 Package Manager 의 링크가 404 로 죽는다.
 - `unity` 필드는 `"6000.0"` 형식(메이저.마이너)만 쓴다. 패치까지 적으면 무시되거나 경고가 난다.
 - `README.md`, `CHANGELOG.md`, `LICENSE.md`, (라이선스가 GPL 이면) `NOTICE.md` 를 패키지 폴더 안에 둔다.
 - 패키지 폴더 안의 모든 파일·폴더에 `.meta` 가 있어야 한다. `Samples~` 폴더 **자체**는 Unity 에 보이지 않으므로 `.meta` 를 만들지 않지만, 그 **내부** 파일은 임포트 시 에셋이 되므로 `.meta` 가 필요하다.

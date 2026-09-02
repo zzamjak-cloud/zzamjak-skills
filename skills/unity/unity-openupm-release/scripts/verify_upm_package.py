@@ -167,6 +167,25 @@ def check_package_json(package_dir: Path, allowed_extra: set[str]) -> dict | Non
     return data
 
 
+def check_doc_urls(project: Path, data: dict) -> None:
+    """documentationUrl / changelogUrl / licensesUrl 이 실재하는 경로를 가리키는지 검사한다.
+
+    GitHub blob URL 은 레포 상대 경로로 환원해 로컬 파일 존재를 확인한다.
+    이 값이 틀리면 Package Manager 의 링크가 404 로 죽는다.
+    """
+    pattern = re.compile(r"^https://github\.com/[^/]+/[^/]+/blob/[^/]+/(.+)$")
+    for field in ("documentationUrl", "changelogUrl", "licensesUrl"):
+        url = data.get(field)
+        if not isinstance(url, str) or not url:
+            continue
+        match = pattern.match(url)
+        if not match:
+            continue
+        target = project / match.group(1)
+        if not target.exists():
+            err(f"{field} 이 존재하지 않는 경로를 가리킵니다 (Package Manager 링크 404): {url}")
+
+
 def check_samples(package_dir: Path, data: dict) -> None:
     samples = data.get("samples") or []
     samples_root = package_dir / "Samples~"
@@ -519,6 +538,7 @@ def main() -> int:
         check_meta_files(package_dir)
         check_git(project, package_dir)
         if data:
+            check_doc_urls(project, data)
             check_samples(package_dir, data)
             check_manifest(project, data.get("name", package_dir.name))
             check_version_consistency(project, package_dir, data)
