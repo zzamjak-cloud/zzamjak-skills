@@ -11,7 +11,7 @@ git init -b main                                   # 아직 저장소가 아니�
 git add -A
 git status --short
 git ls-files Packages/com.zzamjak.<name> | wc -l   # 0 이면 중단하고 원인 파악
-git ls-files -s Packages | awk '$1=="160000"'      # 출력이 있으면 gitlink 사고
+git ls-files -s Packages | grep "^160000"      # 출력이 있으면 gitlink 사고
 git commit -m "<ProjectName> v1.0.0 최초 릴리스"
 ```
 

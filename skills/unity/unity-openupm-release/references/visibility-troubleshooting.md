@@ -17,7 +17,7 @@ Unity 는 임베디드 패키지 해석에 실패해도 **대부분 조용히 �
 | 7 | `manifest.json` 에 같은 이름의 잔여 항목 | `grep com.zzamjak.<name> Packages/manifest.json` | `dependencies` 에서 해당 줄을 삭제한다. 임베디드 패키지는 manifest 에 등록하지 않는다 |
 | 8 | `packages-lock.json` 이 옛 소스로 고정 | 해당 항목의 `"source"` 값 확인 | `"source": "embedded"` 가 아니면 `packages-lock.json` 을 삭제하고 Unity 재실행 |
 | 9 | `unity` 필드가 에디터보다 높거나 형식이 틀림 | `"6000.0"` 형식인가, `ProjectVersion.txt` 보다 높은가 | `메이저.마이너` 두 자리로 고치고 에디터 버전 이하로 맞춘다 |
-| 10 | git 서브모듈(gitlink)로 커밋됨 | `git ls-files -s Packages \| awk '$1=="160000"'` | 아래 [gitlink 사고](#gitlink-사고) 참고. clone 한 사람에게는 빈 폴더로 보인다 |
+| 10 | git 서브모듈(gitlink)로 커밋됨 | `git ls-files -s Packages \| grep "^160000"` | 아래 [gitlink 사고](#gitlink-사고) 참고. clone 한 사람에게는 빈 폴더로 보인다 |
 | 11 | `.gitignore` 가 패키지를 제외 | `git check-ignore -v Packages/com.zzamjak.<name>/package.json` | 전역·로컬 gitignore 의 해당 규칙에 `!` 예외를 추가한다 |
 | 12 | `Samples~` 가 `*~` 패턴에 걸려 누락 | `git check-ignore -v "Packages/com.zzamjak.<name>/Samples~/."` | `.gitignore` 에 `!**/Samples~/` 와 `!**/Samples~/**` 를 추가한다 |
 | 13 | `Library` 캐시 파손 | 위 항목이 모두 정상인데도 안 보임 | Unity 종료 → `Library/` 삭제 → 재실행 (재임포트에 시간이 걸린다) |
@@ -31,7 +31,7 @@ Unity 는 임베디드 패키지 해석에 실패해도 **대부분 조용히 �
 ```bash
 # 진단
 find Packages/com.zzamjak.<name> -name .git -maxdepth 3
-git ls-files -s Packages | awk '$1=="160000"'
+git ls-files -s Packages | grep "^160000"
 
 # 조치
 rm -rf Packages/com.zzamjak.<name>/.git

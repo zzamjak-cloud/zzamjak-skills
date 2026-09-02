@@ -97,7 +97,7 @@ python3 ~/.claude/skills/unity-openupm-release/scripts/verify_upm_package.py <�
 
 ```bash
 git ls-files Packages/com.zzamjak.<name> | wc -l          # 0 이면 안 된다
-git ls-files -s Packages | awk '$1=="160000"'             # 출력이 있으면 gitlink 사고
+git ls-files -s Packages | grep "^160000"             # 출력이 있으면 gitlink 사고
 ```
 
 - 사용자 승인 후 공개 레포를 만들고 push 한다.
