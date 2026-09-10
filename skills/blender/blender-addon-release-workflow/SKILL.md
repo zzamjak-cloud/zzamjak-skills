@@ -12,6 +12,7 @@ description: "Blender 애드온/Extension 소스(blender_manifest.toml, bpy 등�
 - 작업 전 대상 프로젝트의 Git 상태와 원격 동기화를 먼저 확인한다.
 - 개발 테스트는 일상적으로 사용하는 Blender 프로필과 설치된 릴리스 버전을 건드리지 않는다.
 - Blender 애드온 개발 환경을 새로 만들거나 정비할 때 macOS용 `scripts/dev_run.sh`와 Windows용 `scripts/dev_run.ps1`·`scripts/dev_run.bat`을 항상 함께 제공한다. 현재 작업 환경이 한 운영체제뿐이어도 다른 운영체제 실행기를 생략하지 않는다.
+- 실행기·테스트 러너·패키징 스크립트는 Blender 경로를 환경 변수로만 받지 않는다. 비어 있으면 PATH와 흔한 설치 위치를 훑고, 폴더 이름이 아니라 `--version` 출력으로 실제 버전을 확인해 매니페스트 최소 버전을 만족하는 가장 높은 버전을 고른다. 해석 규칙은 [개발 프로필](references/dev-profile.md)에 있다.
 - 프로젝트마다 고유한 프로필 디렉터리와 매니페스트 `id`를 사용한다.
 - 개발 프로필은 저장소 소스를 `extensions/user_default/<addon-id>`로 연결하며, 빌드 ZIP 설치를 반복하지 않는다.
 - GitHub 소유자는 별도 지시가 없으면 `zzamjak-cloud`, 공개 저장소 이름은 충돌을 피할 수 있는 구체적인 `<Project>-Blender` 형식을 우선 검토한다.
@@ -30,5 +31,6 @@ description: "Blender 애드온/Extension 소스(blender_manifest.toml, bpy 등�
 
 - 정적 테스트뿐 아니라 격리된 실제 Blender 프로세스에서 등록·핵심 기능·해제를 검증한다.
 - macOS와 Windows 개발 실행기 및 양쪽 사용법이 모두 존재하는지 회귀 검사한다. 현재 운영체제가 아닌 쪽은 구문·인코딩·인자 전달·안전 처리까지 정적으로 검증하고 실제 런타임 미검증 사실을 보고한다.
+- 실행기를 환경 변수 없이 실행해 자동 감지가 의도한 설치를 고르는지 확인한다. 버전이 여러 개 깔려 있으면 낮은 버전을 고르지 않는지, 최소 버전 미달만 있을 때 찾은 설치와 버전을 알려 주는지도 함께 확인한다.
 - 배포 요청이 포함된 경우 Git 커밋/태그, Actions, Release 자산, Pages `index.json`, 원격 설치 또는 업데이트 결과를 각각 확인한다.
 - README에는 개발 프로필 실행법과 사용자용 원격 저장소 URL을 구분해 기록한다.
