@@ -27,8 +27,14 @@ scripts/
 | `ai` | `google-ai-setup` | Gemini API 기반 AI 기능 통합 |
 | `authentication` | `google-oauth-setup` | Google OAuth 2.0 PKCE 인증 구성 |
 | `blender` | `blender-addon-release-workflow` | Blender 애드온·Extension 개발 및 배포 |
+| `godot-merge` | `merge-asset-library` | 머지 게임 공유 아트 라이브러리(모델·사운드·아이콘) 찾기·들이기·등록·sync |
+| `godot-merge` | `merge-resource-pipeline` | 머지 게임 리소스 제작(StyleStudio 2D, Codex Astra·LP3D 3D, 아이콘 굽기 등) |
+| `godot-merge` | `merge-palette-models` | 팔레트 셀 색칠·편집용 .blend 원본·「적용해줘」 루틴 |
+| `godot-merge` | `civ-legend-scene-layout` | Civilization_Merge 전설 장면 배치 .blend 적용·재생성 |
 | `tauri` | `tauri-project-setup` | Tauri 2 프로젝트 생성 및 기존 프런트엔드 통합 |
+| `tooling` | `claude-code-maintenance` | Claude Code 자동 업데이트 실패 복구·OMC 업데이트 |
 | `unity` | `unity-openupm-release` | Unity 기능의 `com.zzamjak` UPM 패키지 분리 및 OpenUPM 배포 |
+| `unity` | `unity-tool-routing` | Unity 작업의 MCP·CLI 도구 선택 기준 |
 
 카테고리는 소문자 영문·숫자·하이픈으로 만들고, 스킬 이름은 저장소 전체에서 고유하게 유지한다. 각 스킬 폴더 이름은 `SKILL.md`의 `name`과 같아야 한다.
 
