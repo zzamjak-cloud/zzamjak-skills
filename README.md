@@ -32,6 +32,7 @@ scripts/
 | `godot-merge` | `merge-resource-pipeline` | 머지 게임 리소스 제작(StyleStudio 2D, Codex Astra·LP3D 3D, 아이콘 굽기 등) |
 | `godot-merge` | `merge-palette-models` | 팔레트 셀 색칠·편집용 .blend 원본·「적용해줘」 루틴 |
 | `godot-merge` | `civ-legend-scene-layout` | Civilization_Merge 전설 장면 배치 .blend 적용·재생성 |
+| `marketing` | `project-promo` | 프로젝트 홍보 키트: 채널 지도·채널별 문구·카드/썸네일·GIF·쇼츠 변환·정기 게시 캘린더(.ics) |
 | `tauri` | `tauri-project-setup` | Tauri 2 프로젝트 생성 및 기존 프런트엔드 통합 |
 | `tooling` | `claude-code-maintenance` | Claude Code 자동 업데이트 실패 복구·OMC 업데이트 |
 | `unity` | `unity-openupm-release` | Unity 기능의 `com.zzamjak` UPM 패키지 분리 및 OpenUPM 배포 |

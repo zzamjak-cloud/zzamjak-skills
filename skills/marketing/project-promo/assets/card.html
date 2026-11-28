@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: {{WIDTH}}px; height: {{HEIGHT}}px; overflow: hidden; }
+  body {
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Helvetica Neue", sans-serif;
+    background: {{BG}};
+    color: #f5f5f7;
+    display: flex;
+    flex-direction: {{DIRECTION}};
+    align-items: center;
+    gap: calc({{UNIT}} * 4);
+    padding: calc({{UNIT}} * 6);
+  }
+  .text { word-break: keep-all; text-wrap: balance; flex: 1 1 45%; display: flex; flex-direction: column; gap: calc({{UNIT}} * 2); }
+  .tag {
+    align-self: flex-start;
+    font-size: calc({{UNIT}} * 2.2);
+    font-weight: 700;
+    color: {{ACCENT}};
+    border: 2px solid {{ACCENT}};
+    border-radius: 999px;
+    padding: calc({{UNIT}} * 0.5) calc({{UNIT}} * 1.8);
+  }
+  h1 { font-size: calc({{UNIT}} * 7.5); line-height: 1.05; font-weight: 800; letter-spacing: -0.02em; }
+  p { font-size: calc({{UNIT}} * 3); line-height: 1.35; color: #c7c7cc; }
+  .url { font-size: calc({{UNIT}} * 2.2); color: {{ACCENT}}; font-weight: 600; }
+  .shot { flex: 1 1 55%; display: flex; align-items: center; justify-content: center; max-height: 100%; }
+  .shot img {
+    max-width: 100%; max-height: 100%;
+    border-radius: calc({{UNIT}} * 1.5);
+    box-shadow: 0 calc({{UNIT}} * 2) calc({{UNIT}} * 6) rgba(0,0,0,.55);
+  }
+  .shot:empty { display: none; }
+  body.column { justify-content: center; }
+  body.column .text { flex: 0 0 auto; width: 100%; }
+  body.column .shot { flex: 0 1 auto; min-height: 0; }
+</style>
+</head>
+<body class="{{DIRECTION}}">
+  <div class="text">
+    <span class="tag">{{TAG}}</span>
+    <h1>{{TITLE}}</h1>
+    <p>{{SUBTITLE}}</p>
+    <span class="url">{{URL}}</span>
+  </div>
+  <div class="shot">{{IMAGE}}</div>
+</body>
+</html>
