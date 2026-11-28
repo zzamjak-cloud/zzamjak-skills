@@ -41,8 +41,8 @@ add_child(river)
 - **형상(River)**: `curve`, `loop_path`, `width`(4), `width_curve`(Curve, 위치별 폭 배율), `length_samples`(64, ≤512), `width_segments`(4), `uv_length_scale`(8), `uv_start_v`.
 - **물 색**: `shallow_color`(0.45,0.90,0.92)·`deep_color`(0.06,0.28,0.55), `shallow_alpha`(0.5)·`deep_alpha`(0.95), `depth_fade_distance`(3).
 - **접경 포말**: `shore_foam_enabled`(true), `foam_color`, `foam_distance`(0.6, 두께), `foam_cutoff`(0.6, 높을수록 포말 감소), `foam_softness`(0.04), `foam_noise_amount`(0.35), `foam_alpha`, `foam_fade_start`(0)·`foam_fade_end`(300, 먼 물가 깜빡임 제거), `channel0`.
-- **수면 노이즈**: `noise_texture`(비우면 기본), `channel1`, 난류 `noise_churn_enabled`(true)·`churn_speed`(0.12)·`churn_jitter`(0.5)·`churn_warp`(0.06)·`churn_rotation`(0.6), 셀 거품 `cell_foam_enabled`(true)·`cell_color`·`cell_cutoff`(0.72, 낮을수록 거품 많음)·`cell_softness`(0.03)·`cell_intensity`(0.5).
-- **파동**: `wave_enabled`(true), `wave_a`=(dirx, dirz, 가파름, 파장)(1,0,0.25,8), `wave_b`(0.7,0.7,0.15,4), `ripple`=(진폭, 주파수, 속도)(0.04,3,1.5).
+- **수면 노이즈**: `noise_texture`(비우면 기본), `channel1`, 난류 `noise_churn_enabled`(true)·`churn_speed`(0.12)·`churn_jitter`(0.5)·`churn_warp`(0.06)·`churn_rotation`(0.6), 셀 거품 `cell_foam_enabled`(true)·`cell_color`·`cell_cutoff`(0.72, 낮을수록 거품 많음)·`cell_softness`(0.03)·`cell_intensity`(0.5), 얼룩 `surface_breakup`(0.6, 셀 거품·하이라이트 개수·밝기를 구역마다 다르게, 평균 유지, 0=균일)·`surface_breakup_scale`(25m, 강 8m).
+- **파동**: `wave_enabled`(true), `wave_a`=(dirx, dirz, 가파름, 파장)(1,0,0.25,8), `wave_b`(0.7,0.7,0.15,4), `ripple`=(진폭, 주파수, 속도)(0.04,3,1.5, 방향파 3개 합이라 격자 무늬 없음), 변화 `wave_phase_jitter`(0.5, 강 0.4: 지역별 위상 비틀기로 마루선 불규칙)·`swell_variation`(0.4, 강 0.3: 지역별 진폭 감소=너울 묶음, 진폭을 키우지 않음)·`swell_scale`(40m, 강 10m). 랜덤성은 텍스처 페치·셰이더 변형을 늘리지 않는다(정점 셰이더 저주파 함수).
 - **하이라이트**: `highlight_enabled`(true), `highlight_color`, `highlight_power`(64), `highlight_cutoff`(0.5, 낮을수록 넓음), `highlight_intensity`(0.8), `main_light`(비면 씬의 첫 `DirectionalLight3D`).
 - **시간**: `use_unscaled_time`. 동기화: `far_surface`(Surface), `next_river`(River).
 - 기능 토글을 끄면 그 기능이 셰이더에서 빠진다(켠 조합마다 셰이더를 만들어 공유). 토글 변경 시 셰이더가 바뀌므로 매 프레임 토글하지 않는다.
@@ -77,6 +77,7 @@ ch.ease = CatEase.Type.OUT_BOUNCE
 - 물 아래 지형이 없거나 투명이면 포말·깊이 색이 안 보인다.
 - **노드 스케일은 1로 둔다**(파도 변위가 월드 단위라 컬링 팝핑). Gerstner 가파름 합 > 1이면 수면이 접힌다. 파장은 정점 간격 × 4 이상.
 - 먼 물가는 깊이 분해능 때문에 포말이 깜빡인다. `foam_fade_start/end`로 150~300m부터 지운다.
+- 얼룩(`surface_breakup`)은 정점 보간이라 정점 간격이 `surface_breakup_scale`/4보다 큰 바다(먼 바다)에는 자동으로 적용되지 않는다. 근거리 패치는 `wave_edge_fade`가 있어야 이음매가 안 생긴다. 균일한 원본 모습이 필요하면 랜덤성 값을 0으로(잔물결 모양만 다름).
 - 수면 아래에서는 보이지 않는다(`cull_back`). 모바일은 물 하나당 정점 20,000개 이하 권장.
 - 파도는 셰이더 `TIME`을 써서 `Engine.time_scale = 0`이어도 움직인다. 흐름·난류는 노드 시간(`use_unscaled_time`)을 따른다.
 - 채널·곡선은 복제해도 공유되지 않는다(씬에서 한 노드 값을 바꿔도 복제본은 그대로).
